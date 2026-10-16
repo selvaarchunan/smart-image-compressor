@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Image Compressor - 100% Client-Side</title>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- JSZip for multi-file local download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: #1f2937;
+      --border-color: #374151;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-glow: rgba(59, 130, 246, 0.25);
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    p.subtitle {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    /* Controls & Dropzone */
+    .panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(31, 41, 55, 0.4);
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .dropzone i {
+      width: 48px;
+      height: 48px;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .dropzone h3 {
+      font-size: 1.15rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .dropzone p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    /* Settings Bar */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      padding: 0;
+      cursor: pointer;
+    }
+
+    /* Global Actions */
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    /* Card List */
+    .items-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .item-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .item-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      min-width: 250px;
+    }
+
+    .item-preview {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+    }
+
+    .item-meta h4 {
+      font-size: 0.95rem;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-stats {
+      font-size: 0.825rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .saved-badge {
+      display: inline-block;
+      color: var(--success);
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .btn-sm {
+      padding: 0.45rem 0.8rem;
+      font-size: 0.8rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">
+        <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+        100% Client-Side &bull; Zero Server Uploads
+      </div>
+      <h1>Smart Image Compressor</h1>
+      <p class="subtitle">Compress JPEG, PNG, and WebP images directly in your browser with high-fidelity canvas processing.</p>
+    </header>
+
+    <div class="panel">
+      <div class="dropzone" id="dropzone">
+        <i data-lucide="upload-cloud"></i>
+        <h3>Click to upload or drag & drop images</h3>
+        <p>Supports PNG, JPG, JPEG, and WebP files</p>
+        <input type="file" id="fileInput" multiple accept="image/png, image/jpeg, image/webp" class="hidden" />
+      </div>
+
+      <div class="settings-grid">
+        <div class="control-group">
+          <label>Quality: <span id="qualityVal">80%</span></label>
+          <input type="range" id="qualityRange" min="10" max="100" value="80" />
+        </div>
+        <div class="control-group">
+          <label>Max Width / Height</label>
+          <select id="maxDimSelect">
+            <option value="0">Original Resolution</option>
+            <option value="2560">2560px (2K QHD)</option>
+            <option value="1920" selected>1920px (Full HD)</option>
+            <option value="1280">1280px (HD)</option>
+            <option value="800">800px (Web/Mobile)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Output Format</label>
+          <select id="formatSelect">
+            <option value="auto" selected>Auto (Keep Original)</option>
+            <option value="image/webp">Convert to WebP (Best size)</option>
+            <option value="image/jpeg">Convert to JPEG</option>
+            <option value="image/png">Convert to PNG</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="actionContainer" class="action-bar hidden">
+      <div>
+        <span id="totalSavings" style="font-weight: 600; color: var(--success); font-size: 0.95rem;"></span>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button id="downloadAllBtn" class="btn btn-primary">
+          <i data-lucide="archive"></i> Download All (.ZIP)
+        </button>
+        <button id="clearAllBtn" class="btn btn-danger">
+          <i data-lucide="trash-2"></i> Clear
+        </button>
+      </div>
+    </div>
+
+    <div class="items-grid" id="itemsList"></div>
+
+    <footer>
+      <p>Processed completely in your local browser memory using Canvas &amp; Web Workers API.</p>
+    </footer>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const qualityRange = document.getElementById('qualityRange');
+    const qualityVal = document.getElementById('qualityVal');
+    const maxDimSelect = document.getElementById('maxDimSelect');
+    const formatSelect = document.getElementById('formatSelect');
+    const itemsList = document.getElementById('itemsList');
+    const actionContainer = document.getElementById('actionContainer');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const totalSavingsEl = document.getElementById('totalSavings');
+
+    let processedFiles = [];
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    qualityRange.addEventListener('input', (e) => {
+      qualityVal.textContent = e.target.value + '%';
+    });
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    ['dragenter', 'dragover'].forEach(name => {
+      dropzone.addEventListener(name, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(name => {
+      dropzone.addEventListener(name, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files?.length) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files?.length) {
+        handleFiles(e.target.files);
+      }
+    });
+
+    async function handleFiles(files) {
+      const quality = parseInt(qualityRange.value, 10) / 100;
+      const maxDim = parseInt(maxDimSelect.value, 10);
+      const chosenFormat = formatSelect.value;
+
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        await compressImage(file, quality, maxDim, chosenFormat);
+      }
+      renderList();
+      fileInput.value = '';
+    }
+
+    async function compressImage(file, quality, maxDim, chosenFormat) {
+      const bitmap = await createImageBitmap(file);
+      let width = bitmap.width;
+      let height = bitmap.height;
+
+      if (maxDim > 0 && (width > maxDim || height > maxDim)) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0, width, height);
+
+      let targetMime = chosenFormat === 'auto' ? file.type : chosenFormat;
+      if (targetMime === 'image/png' && chosenFormat === 'auto') {
+        // keep PNG as PNG or convert if requested
+        targetMime = 'image/png';
+      }
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob((b) => resolve(b), targetMime, quality);
+      });
+
+      let ext = targetMime.split('/')[1] || 'jpg';
+      if (ext === 'jpeg') ext = 'jpg';
+      const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+      const finalName = `${baseName}_min.${ext}`;
+
+      const item = {
+        id: Math.random().toString(36).substr(2, 9),
+        originalName: file.name,
+        outputName: finalName,
+        originalSize: file.size,
+        compressedSize: blob.size,
+        blob: blob,
+        previewUrl: URL.createObjectURL(blob),
+        savingsPercent: Math.max(0, Math.round(((file.size - blob.size) / file.size) * 100))
+      };
+
+      processedFiles.push(item);
+    }
+
+    function renderList() {
+      itemsList.innerHTML = '';
+      if (processedFiles.length === 0) {
+        actionContainer.classList.add('hidden');
+        return;
+      }
+
+      actionContainer.classList.remove('hidden');
+
+      let totalOrig = 0;
+      let totalComp = 0;
+
+      processedFiles.forEach(item => {
+        totalOrig += item.originalSize;
+        totalComp += item.compressedSize;
+
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `
+          <div class="item-info">
+            <img src="${item.previewUrl}" class="item-preview" alt="Preview" />
+            <div class="item-meta">
+              <h4>${item.outputName}</h4>
+              <div class="item-stats">
+                <span>${formatBytes(item.originalSize)} &rarr; <strong>${formatBytes(item.compressedSize)}</strong></span>
+                <span class="saved-badge">-${item.savingsPercent}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-primary btn-sm" onclick="downloadSingle('${item.id}')">
+              <i data-lucide="download" style="width: 14px; height: 14px;"></i> Download
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="removeItem('${item.id}')">
+              <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+            </button>
+          </div>
+        `;
+        itemsList.appendChild(card);
+      });
+
+      const totalSavedBytes = totalOrig - totalComp;
+      const totalPercent = totalOrig > 0 ? Math.round((totalSavedBytes / totalOrig) * 100) : 0;
+      totalSavingsEl.textContent = `Total Saved: ${formatBytes(Math.max(0, totalSavedBytes))} (${totalPercent}%)`;
+
+      lucide.createIcons();
+    }
+
+    window.downloadSingle = function(id) {
+      const item = processedFiles.find(i => i.id === id);
+      if (!item) return;
+      const link = document.createElement('a');
+      link.href = item.previewUrl;
+      link.download = item.outputName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    window.removeItem = function(id) {
+      processedFiles = processedFiles.filter(i => i.id !== id);
+      renderList();
+    };
+
+    clearAllBtn.addEventListener('click', () => {
+      processedFiles = [];
+      renderList();
+    });
+
+    downloadAllBtn.addEventListener('click', async () => {
+      if (processedFiles.length === 0) return;
+
+      if (processedFiles.length === 1) {
+        downloadSingle(processedFiles[0].id);
+        return;
+      }
+
+      const zip = new JSZip();
+      processedFiles.forEach(item => {
+        zip.file(item.outputName, item.blob);
+      });
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = 'compressed-images.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  </script>
+</body>
+</html>
