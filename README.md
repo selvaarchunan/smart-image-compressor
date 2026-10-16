@@ -21,6 +21,8 @@ Download or clone this repository and open `image-compressor.html` in a modern w
 
 A hosted demo can be added here after deploying the project to GitHub Pages.
 
+Demo-https://selvaarchunan.github.io/smart-image-compressor/
+
 ## Getting Started
 
 ### Option 1: Download the project
